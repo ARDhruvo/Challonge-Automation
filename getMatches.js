@@ -25,7 +25,7 @@ function getMatches() {
 
     // getTourneyDetails(responseTourney);
     //   getMatchDetails(responseRound);
-    round = getRoundDetails(responseTourney, responseRound);
+    round = getRoundDetails(responseTourney, responseRound, roundNum);
     Logger.log(round);
 
     editSheet(round, roundNum);
@@ -43,10 +43,15 @@ function editSheet(round, roundNum) {
 
     const sheetName = 'round' + roundNum;
 
-    ss.insertSheet(sheetName);
+    if (ss.getSheetByName(sheetName)) {
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
+        ss.getActiveSheet().clearContents();
+    }
+    else {
+        ss.insertSheet(sheetName);
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
 
-    ss.setActiveSheet(ss.getSheetByName(sheetName));
-
+    }
 
     const roundSheet = ss.getActiveSheet();
     Logger.log(roundSheet);
@@ -96,21 +101,28 @@ function getDetails(url, options) {
     return result;
 }
 
-function getRoundDetails(tourney, match) {
+function getRoundDetails(tourney, match, roundNum) {
     var round = {};
     match.data.forEach((m) => {
-        var matchDetails = {};
-        var playerInfo = [];
-        const matchAttrs = m.attributes;
-        const p1Id = matchAttrs.points_by_participant[0].participant_id;
-        var p1Name = getPlayers(tourney, p1Id);
-        const p2Id = matchAttrs.points_by_participant[1].participant_id;
-        var p2Name = getPlayers(tourney, p2Id);
-        Logger.log(
-            `Match ID: ${m.id}, Player 1 ID: ${p1Id}, Name: ${p1Name}, Player 2 ID: ${p2Id}, Name: ${p2Name}`,
-        );
-        playerInfo.push(m.id, p1Name, p2Name, matchAttrs.scores);
-        round[matchAttrs.identifier] = playerInfo;
+        currMatch = m.attributes;
+        if (currMatch.round == roundNum) {
+            var matchDetails = {};
+            var playerInfo = [];
+            const matchAttrs = m.attributes;
+            const p1Id = matchAttrs.points_by_participant[0].participant_id;
+            Logger.log(currMatch.state);
+            if (currMatch.state != 'complete') {
+                putTie(m.id, p1Id);
+            }
+            var p1Name = getPlayers(tourney, p1Id);
+            const p2Id = matchAttrs.points_by_participant[1].participant_id;
+            var p2Name = getPlayers(tourney, p2Id);
+            // Logger.log(
+            //     `Match ID: ${m.id}, Player 1 ID: ${p1Id}, Name: ${p1Name}, Player 2 ID: ${p2Id}, Name: ${p2Name}`,
+            // );
+            playerInfo.push(m.id, p1Name, p2Name, matchAttrs.scores);
+            round[matchAttrs.identifier] = playerInfo;
+        }
     });
     return round;
 }
@@ -126,4 +138,61 @@ function getPlayers(tourney, pID) {
         }
     });
     return foundName;
+}
+
+function putTie(matchId, participantId) {
+    const challongeApiKey =
+        PropertiesService.getScriptProperties().getProperty("CHALLONGE_API_KEY");
+    const tournamentId =
+        PropertiesService.getScriptProperties().getProperty("TOURNAMENT_ID");
+    var urlMakeTie = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/matches/${matchId}.json`;
+
+    const payload = {
+        data: {
+            type: "match",
+            attributes: {
+                match: [
+                    {
+                        participant_id: "302057535",
+                        score_set: "0",
+                        rank: 1,
+                        advancing: false
+                    }],
+                tie: true
+            }
+        }
+    };
+
+    const options = {
+        method: "PUT",
+        headers: {
+            Accept: "application/json",
+            "Authorization-Type": "v1",
+            Authorization: challongeApiKey,
+            "Content-Type": "application/vnd.api+json",
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true,
+        redirect: "follow",
+    };
+
+    try {
+        const response = UrlFetchApp.fetch(urlMakeTie, options);
+        const statusCode = response.getResponseCode();
+        const content = response.getContentText();
+
+        Logger.log("HTTP Status: " + statusCode);
+        Logger.log("Response: " + content);
+
+        if (statusCode >= 200 && statusCode < 300) {
+            Logger.log("Updated as a tie");
+            result = JSON.parse(content);
+        } else {
+            Logger.log("API Error");
+            Logger.log(response);
+        }
+    } catch (error) {
+        Logger.log("Fetch error");
+        Logger.log(error);
+    }
 }
