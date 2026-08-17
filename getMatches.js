@@ -29,9 +29,112 @@ function getMatches() {
     Logger.log(round);
 
     editSheet(round, roundNum);
+
+    updateMatchForm(round, roundNum);
+
     roundNum++;
     var updatedRoundNum = { "ROUND_NUM": roundNum };
     PropertiesService.getScriptProperties().setProperties(updatedRoundNum);
+}
+
+function updateMatchForm(round, roundNum) {
+    // Convert the round object into an array of match objects.
+    const matches = Object.keys(round).map(key => {
+        const [matchId, player1, player2, score] = round[key];
+        return {
+            matchNumber: letterToNumber(key),
+            matchId: matchId != null ? String(matchId) : 'Unknown',
+            player1: player1 || 'TBD',
+            player2: player2 || 'TBD'
+        };
+    });
+
+    // // Debug: log the exact data going into the form, useful if something looks off.
+    // Logger.log(JSON.stringify(matches, null, 2));
+
+    if (matches.length === 0) {
+        Logger.log('No matches found for round ' + roundNum);
+        return;
+    }
+
+    const formID = PropertiesService.getScriptProperties().getProperty('FORM_ID');
+    let form;
+    if (formID) {
+        form = FormApp.openById(formID);
+
+        // Step 1: Clear GO_TO_PAGE navigation on existing choices first.
+        // Deleting page-break items while other items still reference them
+        // via setGoToPage can throw "Invalid data updating form."
+        const existingItems = form.getItems();
+        existingItems.forEach(item => {
+            if (item.getType() === FormApp.ItemType.LIST) {
+                const listItem = item.asListItem();
+                const plainChoices = listItem.getChoices().map(c => listItem.createChoice(c.getValue()));
+                listItem.setChoices(plainChoices);
+            } else if (item.getType() === FormApp.ItemType.MULTIPLE_CHOICE) {
+                const mcItem = item.asMultipleChoiceItem();
+                const plainChoices = mcItem.getChoices().map(c => mcItem.createChoice(c.getValue()));
+                mcItem.setChoices(plainChoices);
+            }
+        });
+
+        // Step 2: Now safe to delete all existing items, including page breaks.
+        const items = form.getItems();
+        for (let i = items.length - 1; i >= 0; i--) {
+            form.deleteItem(items[i]);
+        }
+    } else {
+        form = FormApp.create('Match Update');
+        PropertiesService.getScriptProperties().setProperty('FORM_ID', form.getId());
+    }
+    form.setDescription('Select the match and report the winner.');
+
+    const dropdownItem = form.addListItem();
+    dropdownItem.setTitle('Which match was played?').setRequired(true);
+
+    const matchLabels = matches.map(m => `${m.matchNumber} - ${m.matchId} (${m.player1} vs ${m.player2})`);
+    const uniqueLabels = new Set(matchLabels);
+    if (uniqueLabels.size !== matchLabels.length) {
+        Logger.log('WARNING: duplicate match labels detected: ' + JSON.stringify(matchLabels));
+    }
+
+    const firstPageBreak = form.addPageBreakItem().setTitle('Match Details');
+
+    const matchPageBreaks = [];
+    const winnerItems = []; // hold refs so we can wire up navigation once finalPageBreak exists
+
+    matches.forEach((match, i) => {
+        let sectionStart;
+        if (i === 0) {
+            sectionStart = firstPageBreak; // first section right after the dropdown
+        } else {
+            sectionStart = form.addPageBreakItem().setTitle('Match ' + match.matchNumber);
+        }
+        matchPageBreaks.push(sectionStart);
+
+        const winnerItem = form.addMultipleChoiceItem();
+        winnerItem.setTitle(`Who won Match ${match.matchNumber}?`).setRequired(true);
+        winnerItems.push({ item: winnerItem, match: match });
+    });
+
+    const finalPageBreak = form.addPageBreakItem()
+        .setTitle('Thank you!')
+        .setHelpText('Your response has been recorded.');
+
+    const dropdownChoices = matchLabels.map((label, i) =>
+        dropdownItem.createChoice(label, matchPageBreaks[i])
+    );
+    dropdownItem.setChoices(dropdownChoices);
+
+    winnerItems.forEach(({ item, match }) => {
+        item.setChoices([
+            item.createChoice(match.player1, finalPageBreak),
+            item.createChoice(match.player2, finalPageBreak),
+            item.createChoice('Tie', finalPageBreak)
+        ]);
+    });
+
+    Logger.log('Form updated: ' + form.getPublishedUrl());
 }
 
 function letterToNumber(letter) {
