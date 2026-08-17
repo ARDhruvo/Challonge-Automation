@@ -20,21 +20,76 @@ function getMatches() {
     const urlTourneyDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/participants.json`;
     const urlRoundDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/matches.json`;
 
-    var responseTourney = getDetails(urlTourneyDetails, options);
-    var responseRound = getDetails(urlRoundDetails, options);
+    // var responseTourney = getDetails(urlTourneyDetails, options);
+    // var responseRound = getDetails(urlRoundDetails, options);
 
-    // getTourneyDetails(responseTourney);
-    //   getMatchDetails(responseRound);
-    round = getRoundDetails(responseTourney, responseRound, roundNum);
-    Logger.log(round);
+    // // getTourneyDetails(responseTourney);
+    // //   getMatchDetails(responseRound);
+    // round = getRoundDetails(responseTourney, responseRound, roundNum);
+    // Logger.log(round);
 
-    editSheet(round, roundNum);
+    // editSheet(round, roundNum);
 
-    updateMatchForm(round, roundNum);
+    // updateMatchForm(round, roundNum);
+
+    sendMail(roundNum);
 
     roundNum++;
     var updatedRoundNum = { "ROUND_NUM": roundNum };
     PropertiesService.getScriptProperties().setProperties(updatedRoundNum);
+}
+
+function sendMail(roundNum) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+
+    const sheetName = 'Form Responses 1';
+
+    if (ss.getSheetByName(sheetName)) {
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
+    }
+    else {
+        ss.insertSheet(sheetName);
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
+
+    }
+
+    var sheet = ss.getActiveSheet();
+
+    var col = 'C';
+    var emails = sheet.getRange(`${col}:${col}`).getValues();
+    emails = emails.flat().filter(String)
+    emails.shift();
+    emails = emails.join(',');
+
+    Logger.log(emails);
+    var receipient = emails;
+
+
+    if (roundNum > 1) {
+        var subject = 'Your Fight Continues!';
+        var body = `<h1>The event continues!</h1>
+    <p>Welcome to ${roundNum}</p>
+    <p>Ready to face your next challenge?</p>
+    <p>Check the following links:</p>
+    <p>Tournament Bracket: [Insert Challonge Link Here]</p>
+    <p>Player Infos: [Insert Google Sheet Link Here]</p>
+    <p>Match Updating Form: [Insert Google Form Link Here]</p>`;
+
+    }
+    else {
+        var subject = 'The Chess Tournament Has Started!';
+        var body = `<h1>Welcome to AUST Chess</h1>
+    <p>The wait is over, the time to move your pieces is finally here!</p>
+    <p>Check the following links:</p>
+    <p>Tournament Bracket: [Insert Challonge Link Here]</p>
+    <p>Player Infos: [Insert Google Sheet Link Here]</p>
+    <p>Match Updating Form: [Insert Google Form Link Here]</p>`;
+
+
+    }
+
+    MailApp.sendEmail({ to: receipient, subject: subject, htmlBody: body });
+
 }
 
 function updateMatchForm(round, roundNum) {
@@ -256,7 +311,7 @@ function putTie(matchId, participantId) {
             attributes: {
                 match: [
                     {
-                        participant_id: "302057535",
+                        participant_id: participantId,
                         score_set: "0",
                         rank: 1,
                         advancing: false
