@@ -3,6 +3,18 @@ function updateResult(e) {
     const itemResponses = formResponse.getItemResponses();
     const email = e.response.getRespondentEmail();
 
+    if (!canSubmitToday(email)) {
+        Logger.log(`Blocked duplicate submission from ${email} for today.`);
+        var subject = "Submission Not Accepted";
+        var body = `<h1>Your response was not accepted</h1>
+        <p>You already submitted a response today. Please contact organizers if you made a mistake</p>
+        <p>Thank you!</p>`
+
+        MailApp.sendEmail({ to: email, subject: subject, htmlBody: body });
+        return; // stop processing entirely
+    }
+    recordSubmission(email);
+
     // Logger.log(itemResponses);
     Logger.log(itemResponses[0].getResponse());
     var winner = itemResponses[1].getResponse();
@@ -202,4 +214,21 @@ function extractNames(input) {
         return inside.split(' vs ');
     }
     return null;
+}
+
+function getTodayKey_() {
+    // e.g. "2026-08-17" in your script's timezone
+    return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function canSubmitToday(email) {
+    const props = PropertiesService.getScriptProperties();
+    const key = "submitted_" + email + "_" + getTodayKey_();
+    return props.getProperty(key) === null;
+}
+
+function recordSubmission(email) {
+    const props = PropertiesService.getScriptProperties();
+    const key = "submitted_" + email + "_" + getTodayKey_();
+    props.setProperty(key, "1");
 }
