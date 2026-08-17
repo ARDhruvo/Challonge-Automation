@@ -20,17 +20,17 @@ function getMatches() {
     const urlTourneyDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/participants.json`;
     const urlRoundDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/matches.json`;
 
-    // var responseTourney = getDetails(urlTourneyDetails, options);
-    // var responseRound = getDetails(urlRoundDetails, options);
+    var responseTourney = getDetails(urlTourneyDetails, options);
+    var responseRound = getDetails(urlRoundDetails, options);
 
-    // // getTourneyDetails(responseTourney);
-    // //   getMatchDetails(responseRound);
-    // round = getRoundDetails(responseTourney, responseRound, roundNum);
-    // Logger.log(round);
+    // getTourneyDetails(responseTourney);
+    //   getMatchDetails(responseRound);
+    round = getRoundDetails(responseTourney, responseRound, roundNum);
+    Logger.log(round);
 
-    // editSheet(round, roundNum);
+    editSheet(round, roundNum);
 
-    // updateMatchForm(round, roundNum);
+    updateMatchForm(round, roundNum);
 
     sendMail(roundNum);
 
