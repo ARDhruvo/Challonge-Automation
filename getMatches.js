@@ -25,18 +25,20 @@ function getMatches() {
 
     // getTourneyDetails(responseTourney);
     //   getMatchDetails(responseRound);
-    round = getRoundDetails(responseTourney, responseRound, roundNum);
+    round = completeRound(responseTourney, responseRound, roundNum);
     Logger.log(round);
+
+    editSheet(round, roundNum);
+
+    roundNum++;
+    var updatedRoundNum = { "ROUND_NUM": roundNum };
+    PropertiesService.getScriptProperties().setProperties(updatedRoundNum);
 
     editSheet(round, roundNum);
 
     updateMatchForm(round, roundNum);
 
     sendMail(roundNum);
-
-    roundNum++;
-    var updatedRoundNum = { "ROUND_NUM": roundNum };
-    PropertiesService.getScriptProperties().setProperties(updatedRoundNum);
 }
 
 function sendMail(roundNum) {
@@ -66,25 +68,95 @@ function sendMail(roundNum) {
 
 
     if (roundNum > 1) {
-        var subject = 'Your Fight Continues!';
-        var body = `<h1>The event continues!</h1>
-    <p>Welcome to ${roundNum}</p>
-    <p>Ready to face your next challenge?</p>
-    <p>Check the following links:</p>
-    <p>Tournament Bracket: [Insert Challonge Link Here]</p>
-    <p>Player Infos: [Insert Google Sheet Link Here]</p>
-    <p>Match Updating Form: [Insert Google Form Link Here]</p>`;
+        var subject = `⚔️ ${roundNum} is Here — Your Next Challenge Awaits!`;
+        var body = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+  <div style="background-color: #1a1a2e; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 26px;">⚔️ ${roundNum}</h1>
+    <p style="color: #e94560; margin: 8px 0 0; font-weight: bold;">The Battle Continues!</p>
+  </div>
 
+  <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+    <p style="font-size: 16px; color: #333;">You've made it to <strong>${roundNum}</strong> of the AUST CSE Carnival &lt;8.0/&gt; Chess Competition!</p>
+    <p style="font-size: 16px; color: #333;">Ready to face your next challenger?</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">🏆 <strong>Tournament Bracket</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+          <a href="[Insert Challonge Link Here]" style="color: #1a1a2e; font-weight: bold;">View Bracket →</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">📋 <strong>Player Info Sheet</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+          <a href="[Insert Google Sheet Link Here]" style="color: #1a1a2e; font-weight: bold;">Check Details →</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px;">📝 <strong>Match Update Form</strong></td>
+        <td style="padding: 12px; text-align: right;">
+          <a href="[Insert Google Form Link Here]" style="color: #1a1a2e; font-weight: bold;">Open Form →</a>
+        </td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="[Insert Google Form Link Here]" style="background-color: #e94560; color: #ffffff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+        Report Your ${roundNum} Result
+      </a>
+    </div>
+
+    <p style="font-size: 14px; color: #777; text-align: center;">Keep calm and calculate your moves — this round could decide everything!</p>
+  </div>
+</div>
+`;
     }
     else {
-        var subject = 'The Chess Tournament Has Started!';
-        var body = `<h1>Welcome to AUST Chess</h1>
-    <p>The wait is over, the time to move your pieces is finally here!</p>
-    <p>Check the following links:</p>
-    <p>Tournament Bracket: [Insert Challonge Link Here]</p>
-    <p>Player Infos: [Insert Google Sheet Link Here]</p>
-    <p>Match Updating Form: [Insert Google Form Link Here]</p>`;
+        var subject = `♟️ Checkmate Season Begins — AUST CSE Carnival <8.0/> Chess is LIVE!`;
+        var body = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+  <div style="background-color: #1a1a2e; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 26px;">♟️ AUST Chess Has Begun!</h1>
+  </div>
 
+  <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+    <p style="font-size: 16px; color: #333;">The wait is over — the board is set, and it's time to move your pieces!</p>
+    <p style="font-size: 16px; color: #333;">The <strong>AUST CSE Carnival &lt;8.0/&gt; Chess Competition</strong> has officially started. Here's everything you need:</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">🏆 <strong>Tournament Bracket</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+          <a href="[Insert Challonge Link Here]" style="color: #1a1a2e; font-weight: bold;">View Bracket →</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">📋 <strong>Player Info Sheet</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+          <a href="[Insert Google Sheet Link Here]" style="color: #1a1a2e; font-weight: bold;">Check Details →</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px;">📝 <strong>Match Update Form</strong></td>
+        <td style="padding: 12px; text-align: right;">
+          <a href="[Insert Google Form Link Here]" style="color: #1a1a2e; font-weight: bold;">Open Form →</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="font-size: 16px; color: #333;">Check the bracket for your first opponent, get in touch with them, and play your match!</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="[Insert Google Form Link Here]" style="background-color: #e94560; color: #ffffff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+        Submit Your Result
+      </a>
+    </div>
+
+    <p style="font-size: 14px; color: #777; text-align: center;">Good luck — may the best mind win!</p>
+  </div>
+</div>
+`;
 
     }
 
@@ -259,7 +331,7 @@ function getDetails(url, options) {
     return result;
 }
 
-function getRoundDetails(tourney, match, roundNum) {
+function completeRound(tourney, match, roundNum) {
     var round = {};
     match.data.forEach((m) => {
         currMatch = m.attributes;
@@ -272,6 +344,32 @@ function getRoundDetails(tourney, match, roundNum) {
             if (currMatch.state != 'complete') {
                 putTie(m.id, p1Id);
             }
+            var p1Name = getPlayers(tourney, p1Id);
+            const p2Id = matchAttrs.points_by_participant[1].participant_id;
+            var p2Name = getPlayers(tourney, p2Id);
+            // Logger.log(
+            //     `Match ID: ${m.id}, Player 1 ID: ${p1Id}, Name: ${p1Name}, Player 2 ID: ${p2Id}, Name: ${p2Name}`,
+            // );
+            playerInfo.push(m.id, p1Name, p2Name, matchAttrs.scores);
+            round[matchAttrs.identifier] = playerInfo;
+        }
+    });
+    return round;
+}
+
+function getRoundDetails(tourney, match, roundNum) {
+    var round = {};
+    match.data.forEach((m) => {
+        currMatch = m.attributes;
+        if (currMatch.round == roundNum) {
+            var matchDetails = {};
+            var playerInfo = [];
+            const matchAttrs = m.attributes;
+            const p1Id = matchAttrs.points_by_participant[0].participant_id;
+            // Logger.log(currMatch.state);
+            // if (currMatch.state != 'complete') {
+            //     putTie(m.id, p1Id);
+            // }
             var p1Name = getPlayers(tourney, p1Id);
             const p2Id = matchAttrs.points_by_participant[1].participant_id;
             var p2Name = getPlayers(tourney, p2Id);
