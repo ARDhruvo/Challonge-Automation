@@ -112,53 +112,6 @@ function sendMail(roundNum) {
 </div>
 `;
     }
-    else {
-        var subject = `♟️ Checkmate Season Begins — AUST CSE Carnival <8.0/> Chess is LIVE!`;
-        var body = `
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
-  <div style="background-color: #1a1a2e; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-    <h1 style="color: #ffffff; margin: 0; font-size: 26px;">♟️ AUST Chess Has Begun!</h1>
-  </div>
-
-  <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
-    <p style="font-size: 16px; color: #333;">The wait is over — the board is set, and it's time to move your pieces!</p>
-    <p style="font-size: 16px; color: #333;">The <strong>AUST CSE Carnival &lt;8.0/&gt; Chess Competition</strong> has officially started. Here's everything you need:</p>
-
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">🏆 <strong>Tournament Bracket</strong></td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-          <a href="[Insert Challonge Link Here]" style="color: #1a1a2e; font-weight: bold;">View Bracket →</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">📋 <strong>Player Info Sheet</strong></td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-          <a href="[Insert Google Sheet Link Here]" style="color: #1a1a2e; font-weight: bold;">Check Details →</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px;">📝 <strong>Match Update Form</strong></td>
-        <td style="padding: 12px; text-align: right;">
-          <a href="[Insert Google Form Link Here]" style="color: #1a1a2e; font-weight: bold;">Open Form →</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="font-size: 16px; color: #333;">Check the bracket for your first opponent, get in touch with them, and play your match!</p>
-
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="[Insert Google Form Link Here]" style="background-color: #e94560; color: #ffffff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
-        Submit Your Result
-      </a>
-    </div>
-
-    <p style="font-size: 14px; color: #777; text-align: center;">Good luck — may the best mind win!</p>
-  </div>
-</div>
-`;
-
-    }
 
     MailApp.sendEmail({ to: receipient, subject: subject, htmlBody: body });
 
