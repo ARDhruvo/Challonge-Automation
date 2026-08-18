@@ -20,6 +20,10 @@ function startTournament() {
     emails.shift();
     emails = emails.join(',');
 
+    var challongeLink = PropertiesService.getScriptProperties().getProperty('CHALLONGE_LINK');
+    var sheetLink = PropertiesService.getScriptProperties().getProperty('INFO_LINK');
+    var formLink = PropertiesService.getScriptProperties().getProperty('SUBMISSION_LINK');
+
     Logger.log(emails);
     var receipient = emails;
 
@@ -38,19 +42,19 @@ function startTournament() {
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">🏆 <strong>Tournament Bracket</strong></td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-          <a href="[Insert Challonge Link Here]" style="color: #1a1a2e; font-weight: bold;">View Bracket →</a>
+          <a href="${challongeLink}" style="color: #1a1a2e; font-weight: bold;">View Bracket →</a>
         </td>
       </tr>
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">📋 <strong>Player Info Sheet</strong></td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-          <a href="[Insert Google Sheet Link Here]" style="color: #1a1a2e; font-weight: bold;">Check Details →</a>
+          <a href="${sheetLink}" style="color: #1a1a2e; font-weight: bold;">Check Details →</a>
         </td>
       </tr>
       <tr>
         <td style="padding: 12px;">📝 <strong>Match Update Form</strong></td>
         <td style="padding: 12px; text-align: right;">
-          <a href="[Insert Google Form Link Here]" style="color: #1a1a2e; font-weight: bold;">Open Form →</a>
+          <a href="${formLink}" style="color: #1a1a2e; font-weight: bold;">Open Form →</a>
         </td>
       </tr>
     </table>
