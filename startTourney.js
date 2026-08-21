@@ -14,7 +14,7 @@ function startTournament() {
 
     var sheet = ss.getActiveSheet();
 
-    var col = 'C';
+    var col = 'B';
     var emails = sheet.getRange(`${col}:${col}`).getValues();
     emails = emails.flat().filter(String)
     emails.shift();
@@ -121,9 +121,11 @@ function startTournament() {
     Logger.log(`Copied ${combined.length} rows to "${destFileName}" > "${destSheetName}".`);
     Logger.log(`Player Info Sheet URL: ${destSpreadsheet.getUrl()}`);
 
-    // var tournamentId = props.getScriptProperties('TOURNAMENT_ID');
-    var tournamentId = props.getScriptProperties('DUMMY_TOURNAMENT');
-    var urlStart = `https://api.challonge.com/v2.1/tournaments/{tournamentId}/change_state.json`
+
+    var challongeApiKey = props.getProperty('CHALLONGE_API_KEY');
+    var tournamentId = props.getProperty('TOURNAMENT_ID');
+    // var tournamentId = props.getScriptProperties('DUMMY_TOURNAMENT');
+    var urlStart = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/change_state.json`
 
     // const raw = JSON.stringify({
     //     "data": {
@@ -138,7 +140,7 @@ function startTournament() {
         data: {
             type: "TournamentState",
             attributes: {
-                state: "start_group_stage"
+                state: "start"
             }
         }
     };
@@ -176,4 +178,37 @@ function startTournament() {
         Logger.log(error);
     }
 
+    // ---- 3. Set up Round 1 ----
+    // This used to live in getMatches.js's roundNum==1 branch. It's moved
+    // here so getMatches.js (running on its own daily trigger from
+    // TOURNAMENT_START_DATE + 1 onward) only ever has to handle "complete
+    // the previous round, set up the next one" — no separate first-round
+    // case. getDetails/getRoundDetails/editSheet/updateMatchForm are
+    // defined in getMatches.js, which lives in this same script project,
+    // so they're callable directly here.
+    // Note: this needs its own GET options — the `options` above is the
+    // PUT request used for the Challonge state-change call.
+    const getOptions = {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            "Authorization-Type": "v1",
+            Authorization: challongeApiKey,
+            "Content-Type": "application/vnd.api+json",
+        },
+        muteHttpExceptions: true,
+        redirect: "follow",
+    };
+    const urlTourneyDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/participants.json`;
+    const urlRoundDetails = `https://api.challonge.com/v2.1/tournaments/${tournamentId}/matches.json`;
+
+    var round1Tourney = getDetails(urlTourneyDetails, getOptions);
+    var round1Matches = getDetails(urlRoundDetails, getOptions);
+
+    var round1 = getRoundDetails(round1Tourney, round1Matches, 1);
+    editSheet(round1, 1);
+    updateMatchForm(round1, 1);
+
+    PropertiesService.getScriptProperties().setProperty('ROUND_NUM', '2');
+    Logger.log('Round 1 set up. ROUND_NUM initialized to 2 for getMatches.js.');
 }

@@ -1,4 +1,11 @@
 function getMatches() {
+    // Daily trigger fires every midnight; this checks the date and no-ops
+    // outside the tournament window instead of assuming it's a valid day.
+    if (!isTournamentActiveDay_()) {
+        Logger.log('Outside tournament window (' + getTodayDateOnly_() + ') — getMatches() skipped.');
+        return;
+    }
+
     const challongeApiKey =
         PropertiesService.getScriptProperties().getProperty("CHALLONGE_API_KEY");
     const tournamentId =
@@ -23,22 +30,63 @@ function getMatches() {
     var responseTourney = getDetails(urlTourneyDetails, options);
     var responseRound = getDetails(urlRoundDetails, options);
 
-    // getTourneyDetails(responseTourney);
-    //   getMatchDetails(responseRound);
-    round = completeRound(responseTourney, responseRound, roundNum);
-    Logger.log(round);
+    // Round 1 setup now happens in startTourney.js on kickoff day, so by the
+    // time getMatches() is allowed to run (see isTournamentActiveDay_),
+    // ROUND_NUM is always >= 2 — this always completes the previous round.
+    var prevRound = roundNum - 1;
+    var completed = completeRound(responseTourney, responseRound, prevRound);
+    editSheet(completed, prevRound);
+    Logger.log(completed);
 
-    editSheet(round, roundNum);
+    if (isLastTournamentDay_()) {
+        // Final day: only finalize the last round's results. There is no
+        // round after this one, so skip building a new round / form / email
+        // and send the tournament-closing email instead.
+        sendClosingMail();
+        Logger.log('Final tournament day — results finalized, no new round created.');
+    } else {
+        var newRound = getRoundDetails(responseTourney, responseRound, roundNum);
+        editSheet(newRound, roundNum);
+        updateMatchForm(newRound, roundNum);
+        sendMail(roundNum);
+        Logger.log(newRound);
 
-    roundNum++;
-    var updatedRoundNum = { "ROUND_NUM": roundNum };
-    PropertiesService.getScriptProperties().setProperties(updatedRoundNum);
+        roundNum++;
+        PropertiesService.getScriptProperties().setProperties({ "ROUND_NUM": String(roundNum) });
+    }
+}
 
-    editSheet(round, roundNum);
+// ---- Date-gating helpers ----
+// Requires two script properties on THIS project (Registration Form
+// (Response) sheet): TOURNAMENT_START_DATE and TOURNAMENT_END_DATE, both
+// in "yyyy-MM-dd" format, e.g. "2026-09-06" and "2026-09-11".
+// String comparison of yyyy-MM-dd dates sorts correctly, so no Date-object
+// arithmetic (and no midnight/timezone edge cases) is needed.
 
-    updateMatchForm(round, roundNum);
+function getTodayDateOnly_() {
+    var tz = Session.getScriptTimeZone();
+    return Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+}
 
-    sendMail(roundNum);
+function isTournamentActiveDay_() {
+    var props = PropertiesService.getScriptProperties();
+    var start = props.getProperty('TOURNAMENT_START_DATE');
+    var end = props.getProperty('TOURNAMENT_END_DATE');
+    if (!start || !end) {
+        Logger.log('TOURNAMENT_START_DATE / TOURNAMENT_END_DATE script properties are not set — refusing to run.');
+        return false;
+    }
+    var today = getTodayDateOnly_();
+    // getMatches() handles rounds 2 onward — round 1 is set up by
+    // startTourney.js on TOURNAMENT_START_DATE itself, so this window
+    // starts the day AFTER kickoff.
+    return today > start && today <= end;
+}
+
+function isLastTournamentDay_() {
+    var props = PropertiesService.getScriptProperties();
+    var end = props.getProperty('TOURNAMENT_END_DATE');
+    return getTodayDateOnly_() === end;
 }
 
 function sendMail(roundNum) {
@@ -57,7 +105,7 @@ function sendMail(roundNum) {
 
     var sheet = ss.getActiveSheet();
 
-    var col = 'C';
+    var col = 'B';
     var emails = sheet.getRange(`${col}:${col}`).getValues();
     emails = emails.flat().filter(String)
     emails.shift();
@@ -71,9 +119,12 @@ function sendMail(roundNum) {
     var sheetLink = PropertiesService.getScriptProperties().getProperty('INFO_LINK');
     var formLink = PropertiesService.getScriptProperties().getProperty('SUBMISSION_LINK');
 
-    if (roundNum > 1) {
-        var subject = `⚔️ ${roundNum} is Here — Your Next Challenge Awaits!`;
-        var body = `
+    // sendMail() is now only ever called for rounds 2+ (round 1's email is
+    // startTourney.js's kickoff email; the final day sends sendClosingMail()
+    // instead), so this is always assigned rather than gated behind an
+    // `if (roundNum > 1)` that a future caller could accidentally skip.
+    var subject = `⚔️ ${roundNum} is Here — Your Next Challenge Awaits!`;
+    var body = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
   <div style="background-color: #1a1a2e; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
     <h1 style="color: #ffffff; margin: 0; font-size: 26px;">⚔️ ${roundNum}</h1>
@@ -115,10 +166,49 @@ function sendMail(roundNum) {
   </div>
 </div>
 `;
-    }
 
     MailApp.sendEmail({ to: receipient, subject: subject, htmlBody: body });
 
+}
+
+function sendClosingMail() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+
+    const sheetName = 'Form Responses 1';
+
+    if (ss.getSheetByName(sheetName)) {
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
+    }
+    else {
+        ss.insertSheet(sheetName);
+        ss.setActiveSheet(ss.getSheetByName(sheetName));
+    }
+
+    var sheet = ss.getActiveSheet();
+
+    var col = 'B';
+    var emails = sheet.getRange(`${col}:${col}`).getValues();
+    emails = emails.flat().filter(String)
+    emails.shift();
+    emails = emails.join(',');
+
+    var receipient = emails;
+
+    var subject = `🏁 AUST CSE Carnival <8.0/> Chess — Tournament Complete`;
+    var body = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+  <div style="background-color: #1a1a2e; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 26px;">🏁 That's a Wrap!</h1>
+  </div>
+
+  <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+    <p style="font-size: 16px; color: #333;">Thank you for participating, we hope it went well on your end.</p>
+    <p style="font-size: 16px; color: #333;">Please view the final standings on the website.</p>
+  </div>
+</div>
+`;
+
+    MailApp.sendEmail({ to: receipient, subject: subject, htmlBody: body });
 }
 
 function updateMatchForm(round, roundNum) {
@@ -222,7 +312,15 @@ function updateMatchForm(round, roundNum) {
 }
 
 function letterToNumber(letter) {
-    return letter.toUpperCase().charCodeAt(0) - 64;
+    // Base-26 decode (same scheme as spreadsheet column letters):
+    // A=1 ... Z=26, AA=27, AB=28, ... — handles rounds with more than
+    // 26 matches, where Challonge identifiers roll over past "Z".
+    letter = letter.toUpperCase();
+    var num = 0;
+    for (var i = 0; i < letter.length; i++) {
+        num = num * 26 + (letter.charCodeAt(i) - 64);
+    }
+    return num;
 }
 
 function editSheet(round, roundNum) {

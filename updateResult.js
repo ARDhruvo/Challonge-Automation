@@ -1,4 +1,12 @@
 function updateResult(e) {
+    // Runs on every Match Update Form submission. Since the form stays live
+    // between tournaments, ignore submissions outside the active window
+    // instead of processing them (e.g. late/early testing submissions).
+    if (!isTournamentActiveDay_()) {
+        Logger.log('Outside tournament window (' + getTodayDateOnly_() + ') — submission ignored.');
+        return;
+    }
+
     const formResponse = e.response;
     const itemResponses = formResponse.getItemResponses();
     const email = e.response.getRespondentEmail();
@@ -107,6 +115,32 @@ function updateResult(e) {
         Logger.log("Fetch error");
         Logger.log(error);
     }
+}
+
+// ---- Date-gating helpers ----
+// Requires two script properties on THIS project (Match Updates Form):
+// TOURNAMENT_START_DATE and TOURNAMENT_END_DATE, both in "yyyy-MM-dd"
+// format, e.g. "2026-09-06" and "2026-09-11". This is a separate Apps
+// Script project from getMatches.js, so it can't share PropertiesService
+// with it — these two properties need to be set here too.
+
+function getTodayDateOnly_() {
+    var tz = Session.getScriptTimeZone();
+    return Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+}
+
+function isTournamentActiveDay_() {
+    var props = PropertiesService.getScriptProperties();
+    var start = props.getProperty('TOURNAMENT_START_DATE');
+    var end = props.getProperty('TOURNAMENT_END_DATE');
+    if (!start || !end) {
+        Logger.log('TOURNAMENT_START_DATE / TOURNAMENT_END_DATE script properties are not set — refusing to run.');
+        return false;
+    }
+    var today = getTodayDateOnly_();
+    // Results can be submitted starting the kickoff day itself (round 1
+    // matches are announced on TOURNAMENT_START_DATE), through the end date.
+    return today >= start && today <= end;
 }
 
 function getMatch(player) {
